@@ -1,0 +1,27 @@
+#!/usr/bin/python2 -O
+
+#If you have Python 3 & 2 on the same system you must specify the version
+import base64, getpass, hashlib, os
+
+
+
+domain = raw_input('Domain: ').strip().lower()
+if(os.path.isfile('./key') == False):
+     key = getpass.getpass('Key: ')
+else:
+     with open('./key', 'r') as f:
+    	key = f.readline()
+	key = key.rstrip("\n\r")
+
+
+bits = domain + '/' + key
+for i in range(2 ** 16):
+  bits = hashlib.sha256(bits).digest()
+password = base64.b64encode(bits)[:16]
+
+print('Password: ' + password)
+
+os.system("echo " + password + " | xclip -selection c")
+
+
+print("Copied password to clipboard!")
