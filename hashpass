@@ -1,27 +1,56 @@
-#!/usr/bin/python2 -O
+#!/usr/bin/python -O
 
-#If you have Python 3 & 2 on the same system you must specify the version
+#You can either redefine the shebang above or make a link to it
 import base64, getpass, hashlib, os
+import click
+import pdb
 
+CONFIG_PATH = os.environ['HOME']  + "/.config/hashpass/"
 
+@click.option('--save-master/--no-master', default=False, help="Save a the master password in PLAINTEXT to 'key'")
+@click.option('--save-domain/--no-domain', help="Appends the deomain name to a file")
+@click.option('--copy/--no-copy', help="Copies the password to the clipboard with XClip")
+@click.option("--domain", prompt=True, help="The domain of the website/service'")
 
-domain = raw_input('Domain: ').strip().lower()
-if(os.path.isfile('./key') == False):
-     key = getpass.getpass('Key: ')
-else:
-     with open('./key', 'r') as f:
-    	key = f.readline()
-	key = key.rstrip("\n\r")
+@click.command()
+def gen_hash(domain, copy, save_domain, save_master):
+    if not os.path.exists(CONFIG_PATH):
+        os.makedirs(CONFIG_PATH)
 
+    #If the key file exists use the maste password inside it
+    if(os.path.isfile(CONFIG_PATH + 'key')):
+        with open(CONFIG_PATH + 'key', 'r') as f:
+            key = f.readline()
+            key = key.rstrip("\n\r")
+    #Otherwise prompt for the user input
+    else:
+        key = getpass.getpass()
 
-bits = domain + '/' + key
-for i in range(2 ** 16):
-  bits = hashlib.sha256(bits).digest()
-password = base64.b64encode(bits)[:16]
+    #Generate a hashpass with the master password appended to the key
+    bits = domain + '/' + key
+    for i in range(2 ** 16):
+      bits = hashlib.sha256(bits).digest()
+    password = base64.b64encode(bits)[:16]
 
-print('Password: ' + password)
+    #Report the password back to the user
+    click.echo('Password: ' + password)
 
-os.system("echo " + password + " | xclip -selection c")
+    #Save the password to a new key file when asked
+    if(save_master):
+        with open(CONFIG_PATH + 'key', 'w') as file:
+            file.write(key)
 
+        click.echo("Master password saved")
 
-print("Copied password to clipboard!")
+    #Save the domain to a new file when asked
+    if(save_domain):
+        with open(CONFIG_PATH + 'domains', 'a') as file:
+            file.write(domain + "\n")
+
+    #Copy the password to the clipboard. Requires XcLip. Windows systems not supported
+    if copy:
+        print("Copied password to clipboard!")
+        os.system("echo " + password + " | xclip -selection c")
+
+if __name__ == '__main__':
+    gen_hash()
